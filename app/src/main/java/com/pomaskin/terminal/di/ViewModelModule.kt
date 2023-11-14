@@ -1,7 +1,7 @@
 package com.pomaskin.terminal.di
 
 import androidx.lifecycle.ViewModel
-import com.pomaskin.terminal.presentation.main.TerminalViewModel
+import com.pomaskin.terminal.presentation.terminal.TerminalViewModel
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoMap

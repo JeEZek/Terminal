@@ -1,4 +1,4 @@
-package com.pomaskin.terminal.presentation.main
+package com.pomaskin.terminal.presentation.terminal
 
 import androidx.lifecycle.ViewModel
 import com.pomaskin.terminal.domain.usecases.GetBarsUseCase
