@@ -1,4 +1,4 @@
-package com.pomaskin.terminal.presentation.main
+package com.pomaskin.terminal.presentation.terminal
 
 import com.pomaskin.terminal.domain.entity.Bar
 
