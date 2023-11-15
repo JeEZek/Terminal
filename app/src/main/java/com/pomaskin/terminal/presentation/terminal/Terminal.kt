@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,10 +39,19 @@ fun TerminalContent(
     when (val currentState = screenState.value) {
         is TerminalScreenState.Content -> {
             var visibleBarsCount by remember { mutableStateOf(100) }
-            var barWidth by remember { mutableStateOf(0f) }
             var terminalWidth by remember { mutableStateOf(0f) }
+            val barWidth by remember { derivedStateOf { terminalWidth / visibleBarsCount } }
             var scrolledBy by remember { mutableStateOf(0f) }
-
+            val visibleBars by remember {
+                derivedStateOf {
+                    val startedIndex = (scrolledBy / barWidth)
+                        .roundToInt()
+                        .coerceAtLeast(0)
+                    val endIndex = (startedIndex + visibleBarsCount)
+                        .coerceAtMost(currentState.barList.size)
+                    currentState.barList.subList(startedIndex, endIndex)
+                }
+            }
             val transformableState = TransformableState { zoomChange, panChange, _ ->
                 visibleBarsCount = (visibleBarsCount / zoomChange).roundToInt()
                     .coerceIn(MIN_VISIBLE_BARS_COUNT, currentState.barList.size)
@@ -49,7 +59,6 @@ fun TerminalContent(
                 scrolledBy = (scrolledBy + panChange.x)
                     .coerceIn(0f, currentState.barList.size * barWidth - terminalWidth)
             }
-
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -57,9 +66,8 @@ fun TerminalContent(
                     .transformable(transformableState)
             ) {
                 terminalWidth = size.width
-                val max = currentState.barList.maxOf { it.high }
-                val min = currentState.barList.minOf { it.low }
-                barWidth = size.width / visibleBarsCount
+                val max = visibleBars.maxOf { it.high }
+                val min = visibleBars.minOf { it.low }
                 val pxPerPoint = size.height / (max - min)
                 translate(left = scrolledBy) {
                     currentState.barList.forEachIndexed { index, bar ->
