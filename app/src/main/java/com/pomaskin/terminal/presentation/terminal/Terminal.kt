@@ -8,15 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pomaskin.terminal.presentation.getApplicationComponent
 import kotlin.math.roundToInt
@@ -38,40 +36,38 @@ fun TerminalContent(
 ) {
     when (val currentState = screenState.value) {
         is TerminalScreenState.Content -> {
-            var visibleBarsCount by remember { mutableStateOf(100) }
-            var terminalWidth by remember { mutableStateOf(0f) }
-            val barWidth by remember { derivedStateOf { terminalWidth / visibleBarsCount } }
-            var scrolledBy by remember { mutableStateOf(0f) }
-            val visibleBars by remember {
-                derivedStateOf {
-                    val startedIndex = (scrolledBy / barWidth)
-                        .roundToInt()
-                        .coerceAtLeast(0)
-                    val endIndex = (startedIndex + visibleBarsCount)
-                        .coerceAtMost(currentState.barList.size)
-                    currentState.barList.subList(startedIndex, endIndex)
-                }
-            }
-            val transformableState = TransformableState { zoomChange, panChange, _ ->
-                visibleBarsCount = (visibleBarsCount / zoomChange).roundToInt()
-                    .coerceIn(MIN_VISIBLE_BARS_COUNT, currentState.barList.size)
 
-                scrolledBy = (scrolledBy + panChange.x)
-                    .coerceIn(0f, currentState.barList.size * barWidth - terminalWidth)
+            val bars = currentState.barList
+            var terminalState by rememberTerminalState(bars)
+
+            val transformableState = TransformableState { zoomChange, panChange, _ ->
+                val visibleBarsCount = (terminalState.visibleBarsCount / zoomChange).roundToInt()
+                    .coerceIn(MIN_VISIBLE_BARS_COUNT, bars.size)
+
+                val scrolledBy = (terminalState.scrolledBy + panChange.x)
+                    .coerceIn(0f, bars.size * terminalState.barWidth - terminalState.terminalWidth)
+
+                terminalState = terminalState.copy(
+                    visibleBarsCount = visibleBarsCount,
+                    scrolledBy = scrolledBy
+                )
             }
+
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
                     .transformable(transformableState)
+                    .onSizeChanged {
+                        terminalState = terminalState.copy(terminalWidth = it.width.toFloat())
+                    }
             ) {
-                terminalWidth = size.width
-                val max = visibleBars.maxOf { it.high }
-                val min = visibleBars.minOf { it.low }
+                val max = terminalState.visibleBars.maxOf { it.high }
+                val min = terminalState.visibleBars.minOf { it.low }
                 val pxPerPoint = size.height / (max - min)
-                translate(left = scrolledBy) {
-                    currentState.barList.forEachIndexed { index, bar ->
-                        val offsetX = size.width - index * barWidth
+                translate(left = terminalState.scrolledBy) {
+                    bars.forEachIndexed { index, bar ->
+                        val offsetX = size.width - index * terminalState.barWidth
                         drawLine(
                             color = Color.White,
                             start = Offset(offsetX, size.height - ((bar.low - min) * pxPerPoint)),
@@ -82,7 +78,7 @@ fun TerminalContent(
                             color = if (bar.close > bar.open) Color.Green else Color.Red,
                             start = Offset(offsetX, size.height - ((bar.open - min) * pxPerPoint)),
                             end = Offset(offsetX, size.height - ((bar.close - min) * pxPerPoint)),
-                            strokeWidth = barWidth / 2
+                            strokeWidth = terminalState.barWidth / 2
                         )
                     }
                 }
