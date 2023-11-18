@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.TransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -13,11 +14,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pomaskin.terminal.presentation.getApplicationComponent
 import kotlin.math.roundToInt
+
+//TODO change all floats to px
 
 private const val MIN_VISIBLE_BARS_COUNT = 20
 
@@ -57,6 +63,10 @@ fun TerminalContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
+                    .padding(
+                        top = 32.dp,
+                        bottom = 32.dp
+                    )
                     .transformable(transformableState)
                     .onSizeChanged {
                         terminalState = terminalState.copy(terminalWidth = it.width.toFloat())
@@ -82,8 +92,57 @@ fun TerminalContent(
                         )
                     }
                 }
+                bars.firstOrNull()?.let {
+                    drawPrices(
+                        min = min,
+                        lastPrice = it.close,
+                        pxPerPoint = pxPerPoint
+                    )
+                }
             }
         }
+
         is TerminalScreenState.Initial -> {}
     }
+}
+
+private fun DrawScope.drawPrices(
+    min: Float,
+    lastPrice: Float,
+    pxPerPoint: Float
+) {
+    //max
+    drawDashedLine(
+        start = Offset(0f, 0f),
+        end = Offset(size.width, 0f)
+    )
+    //last price
+    drawDashedLine(
+        start = Offset(0f, size.height - ((lastPrice - min) * pxPerPoint)),
+        end = Offset(size.width, size.height - ((lastPrice - min) * pxPerPoint))
+    )
+    //min
+    drawDashedLine(
+        start = Offset(0f, size.height),
+        end = Offset(size.width, size.height)
+    )
+}
+
+private fun DrawScope.drawDashedLine(
+    color: Color = Color.White,
+    start: Offset,
+    end: Offset,
+    strokeWidth: Float = 1.dp.toPx()
+) {
+    drawLine(
+        color = color,
+        start = start,
+        end = end,
+        strokeWidth = strokeWidth,
+        pathEffect = PathEffect.dashPathEffect(
+            intervals = floatArrayOf(
+                4.dp.toPx(), 4.dp.toPx()
+            )
+        )
+    )
 }
